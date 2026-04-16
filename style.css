@@ -181,11 +181,25 @@ button.danger {
 /* ===== Workout screen ===== */
 #screen-workout {
   padding: 16px;
+  padding-bottom: 104px;
   justify-content: flex-start;
   align-items: center;
   transition: background-color 0.25s;
   overflow-y: auto;
   min-height: 0;
+}
+
+.controls-hint {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto 12px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 14px;
 }
 
 .phase-label {
@@ -276,7 +290,20 @@ button.danger {
   transition: width 0.15s ease;
 }
 
-.workout-actions { width: 100%; max-width: 500px; }
+.workout-actions {
+  width: 100%;
+  max-width: 500px;
+  position: sticky;
+  bottom: 0;
+  backdrop-filter: blur(10px);
+  background: rgba(11,11,11,0.88);
+  padding: 12px 0 8px;
+  z-index: 10;
+}
+
+.workout-actions button {
+  min-width: 86px;
+}
 
 /* Phase background colors */
 body.phase-prep    #screen-workout { background: color-mix(in srgb, var(--prep) 15%, var(--bg)); }
