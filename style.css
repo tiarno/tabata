@@ -130,6 +130,54 @@ button.danger {
   border-color: var(--rest);
 }
 
+.description {
+  color: var(--muted);
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+
+.preset-list {
+  margin-bottom: 20px;
+}
+
+.preset-item {
+  display: inline-block;
+  margin: 4px 8px 4px 0;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.preset-item:hover {
+  background: var(--border);
+}
+
+.no-presets {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.main-actions {
+  margin-bottom: 20px;
+}
+
+.big {
+  font-size: 18px;
+  padding: 12px 24px;
+}
+
+.settings-toggle {
+  margin-bottom: 16px;
+}
+
+.settings-panel.collapsed {
+  display: none;
+}
+
 /* ===== Workout screen ===== */
 #screen-workout {
   padding: 16px;

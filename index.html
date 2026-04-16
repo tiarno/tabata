@@ -16,56 +16,70 @@
 
 <!-- SETTINGS SCREEN -->
 <section id="screen-settings" class="screen active">
-  <header><h1>Tabata Timer</h1></header>
+  <header>
+    <h1>Tabata Timer</h1>
+    <p class="description">High-intensity interval training timer. Configure your workout or choose from saved presets.</p>
+  </header>
 
-  <div class="preset-bar">
-    <select id="preset-select" aria-label="Presets">
-      <option value="">-- presets --</option>
-    </select>
-    <button id="preset-load" type="button">Load</button>
-    <button id="preset-delete" type="button" class="danger">Delete</button>
+  <div id="preset-list" class="preset-list"></div>
+
+  <div class="main-actions">
+    <button id="btn-start" type="button" class="primary big">Start Workout</button>
   </div>
 
-  <form id="config-form" autocomplete="off">
-    <label>Preset name
-      <input type="text" id="cfg-name" placeholder="e.g. Legs 6x8" maxlength="40">
-    </label>
+  <div class="settings-toggle">
+    <button id="btn-toggle-settings" type="button">⚙️ Customize Settings</button>
+  </div>
 
-    <label>Tabatas per set
-      <input type="number" id="cfg-tabatas" min="1" max="30" value="6" inputmode="numeric">
-    </label>
-
-    <label>Sets
-      <input type="number" id="cfg-sets" min="1" max="30" value="8" inputmode="numeric">
-    </label>
-
-    <label>Work seconds
-      <input type="number" id="cfg-work" min="5" max="120" value="20" inputmode="numeric">
-    </label>
-
-    <label>Rest seconds
-      <input type="number" id="cfg-rest" min="3" max="120" value="10" inputmode="numeric">
-    </label>
-
-    <label>Between-set rest seconds
-      <input type="number" id="cfg-setrest" min="5" max="600" value="30" inputmode="numeric">
-    </label>
-
-    <div class="toggles">
-      <label class="inline"><input type="checkbox" id="cfg-voice" checked> Voice</label>
-      <label class="inline"><input type="checkbox" id="cfg-click" checked> Click</label>
+  <div id="settings-panel" class="settings-panel collapsed">
+    <div class="preset-bar">
+      <select id="preset-select" aria-label="Presets">
+        <option value="">-- presets --</option>
+      </select>
+      <button id="preset-load" type="button">Load</button>
+      <button id="preset-delete" type="button" class="danger">Delete</button>
     </div>
 
-    <div class="summary" id="summary"></div>
+    <form id="config-form" autocomplete="off">
+      <label>Preset name
+        <input type="text" id="cfg-name" placeholder="e.g. Legs 6x8" maxlength="40">
+      </label>
 
-    <div class="actions">
-      <button id="btn-save" type="button">Save preset</button>
-      <button id="btn-export" type="button">Export presets</button>
-      <input type="file" id="import-file" accept=".json" style="display:none">
-      <button id="btn-import" type="button">Import presets</button>
-      <button id="btn-start" type="button" class="primary">Start</button>
-    </div>
-  </form>
+      <label>Tabatas per set
+        <input type="number" id="cfg-tabatas" min="1" max="30" value="6" inputmode="numeric">
+      </label>
+
+      <label>Sets
+        <input type="number" id="cfg-sets" min="1" max="30" value="8" inputmode="numeric">
+      </label>
+
+      <label>Work seconds
+        <input type="number" id="cfg-work" min="5" max="120" value="20" inputmode="numeric">
+      </label>
+
+      <label>Rest seconds
+        <input type="number" id="cfg-rest" min="3" max="120" value="10" inputmode="numeric">
+      </label>
+
+      <label>Between-set rest seconds
+        <input type="number" id="cfg-setrest" min="5" max="600" value="30" inputmode="numeric">
+      </label>
+
+      <div class="toggles">
+        <label class="inline"><input type="checkbox" id="cfg-voice" checked> Voice</label>
+        <label class="inline"><input type="checkbox" id="cfg-click" checked> Click</label>
+      </div>
+
+      <div class="summary" id="summary"></div>
+
+      <div class="actions">
+        <button id="btn-save" type="button">Save preset</button>
+        <button id="btn-export" type="button">Export presets</button>
+        <input type="file" id="import-file" accept=".json" style="display:none">
+        <button id="btn-import" type="button">Import presets</button>
+      </div>
+    </form>
+  </div>
 </section>
 
 <!-- WORKOUT SCREEN -->

@@ -16,6 +16,9 @@ const el = {
   presetSelect: $('#preset-select'),
   presetLoad:   $('#preset-load'),
   presetDelete: $('#preset-delete'),
+  presetList:   $('#preset-list'),
+  btnToggleSettings: $('#btn-toggle-settings'),
+  settingsPanel: $('#settings-panel'),
   name: $('#cfg-name'),
   tabatas: $('#cfg-tabatas'),
   sets: $('#cfg-sets'),
@@ -106,6 +109,9 @@ function refreshPresetList() {
   el.presetSelect.innerHTML =
     '<option value="">-- presets --</option>' +
     presets.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+  el.presetList.innerHTML = presets.length ?
+    presets.map(p => `<button class="preset-item" data-name="${p.name}">${p.name}</button>`).join('') :
+    '<p class="no-presets">No presets saved yet. Use settings to create one.</p>';
 }
 
 // ---- Preset handlers ----
@@ -226,6 +232,21 @@ el.importFile.addEventListener('change', (e) => {
     }
   };
   reader.readAsText(file);
+});
+
+// ---- Preset list click ----
+el.presetList.addEventListener('click', (e) => {
+  if (e.target.classList.contains('preset-item')) {
+    const name = e.target.dataset.name;
+    const p = loadPresets().find(x => x.name === name);
+    if (p) writeForm(p);
+  }
+});
+
+// ---- Settings toggle ----
+el.btnToggleSettings.addEventListener('click', () => {
+  el.settingsPanel.classList.toggle('collapsed');
+  el.btnToggleSettings.textContent = el.settingsPanel.classList.contains('collapsed') ? '⚙️ Customize Settings' : '⚙️ Hide Settings';
 });
 
 // ---- Workout callbacks ----
