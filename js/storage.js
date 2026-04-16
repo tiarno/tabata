@@ -1,6 +1,6 @@
 // Preset + last-used config persistence.
 
-const PRESETS_KEY = 'tabata.presets.v1';
+export const PRESETS_KEY = 'tabata.presets.v1';
 const LAST_KEY    = 'tabata.last.v1';
 
 export const DEFAULT_CONFIG = {

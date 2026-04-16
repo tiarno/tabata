@@ -3,7 +3,7 @@
 import * as A from './audio.js';
 import { Workout, PHASES } from './workout.js';
 import {
-  DEFAULT_CONFIG, loadPresets, savePreset, deletePreset, loadLast, saveLast
+  DEFAULT_CONFIG, loadPresets, savePreset, deletePreset, loadLast, saveLast, PRESETS_KEY
 } from './storage.js';
 
 // ---- Elements ----
@@ -26,6 +26,9 @@ const el = {
   click: $('#cfg-click'),
   summary: $('#summary'),
   btnSave: $('#btn-save'),
+  btnExport: $('#btn-export'),
+  btnImport: $('#btn-import'),
+  importFile: $('#import-file'),
   btnStart: $('#btn-start'),
   phaseLabel: $('#phase-label'),
   count: $('#count'),
@@ -178,6 +181,51 @@ el.btnStop.addEventListener('click', () => {
   if (!workout) return;
   if (!confirm('Stop workout?')) return;
   workout.stop();
+});
+
+// ---- Export/Import presets ----
+el.btnExport.addEventListener('click', () => {
+  const presets = loadPresets();
+  const data = JSON.stringify(presets, null, 2);
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tabata-presets.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+el.btnImport.addEventListener('click', () => {
+  el.importFile.click();
+});
+
+el.importFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('Invalid format');
+      const existing = loadPresets();
+      const merged = [...existing];
+      let added = 0;
+      for (const preset of imported) {
+        if (preset.name && !merged.find(p => p.name === preset.name)) {
+          merged.push(preset);
+          added++;
+        }
+      }
+      merged.sort((a, b) => a.name.localeCompare(b.name));
+      localStorage.setItem(PRESETS_KEY, JSON.stringify(merged));
+      refreshPresetList();
+      alert(`Imported ${imported.length} presets, added ${added} new`);
+    } catch (err) {
+      alert('Error importing: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
 });
 
 // ---- Workout callbacks ----
