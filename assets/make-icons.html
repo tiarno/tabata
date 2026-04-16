@@ -1,0 +1,80 @@
+<!doctype html>
+<!-- Open this file in a browser, then click Download to get PNG icons.
+     Saves: icon-192.png, icon-512.png, icon-512-maskable.png -->
+<html><head><meta charset="utf-8"><title>Make Icons</title>
+<style>
+body{font-family:system-ui;background:#111;color:#eee;padding:24px}
+button{margin:4px;padding:10px 16px;background:#22c55e;border:0;border-radius:8px;font-weight:700;cursor:pointer}
+canvas{background:#0b0b0b;margin:8px;border-radius:12px;max-width:220px;height:auto;display:inline-block;vertical-align:top}
+</style></head><body>
+<h1>Tabata icon generator</h1>
+<p>Click each button to download. Drop the PNGs into this same <code>assets/</code> folder.</p>
+
+<div>
+  <button onclick="dl(192,false)">Download icon-192.png</button>
+  <button onclick="dl(512,false)">Download icon-512.png</button>
+  <button onclick="dl(512,true)">Download icon-512-maskable.png</button>
+</div>
+
+<div><canvas id="c192" width="192" height="192"></canvas>
+     <canvas id="c512" width="512" height="512"></canvas>
+     <canvas id="c512m" width="512" height="512"></canvas></div>
+
+<script>
+function draw(ctx, size, maskable) {
+  // On maskable icons leave a safe-zone padding inside the 80% center circle.
+  ctx.clearRect(0,0,size,size);
+  // Background (rounded rect)
+  ctx.fillStyle = '#0b0b0b';
+  const r = maskable ? 0 : size * 0.19;
+  roundRect(ctx, 0, 0, size, size, r); ctx.fill();
+
+  const cx = size/2, cy = size/2;
+  const ringR = (maskable ? 0.32 : 0.36) * size;
+  const lineW = size * 0.055;
+
+  // Track
+  ctx.lineWidth = lineW;
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.beginPath(); ctx.arc(cx, cy, ringR, 0, Math.PI*2); ctx.stroke();
+
+  // Progress arc (~75%)
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringR, -Math.PI/2, -Math.PI/2 + Math.PI*1.5);
+  ctx.stroke();
+
+  // Number "20"
+  ctx.fillStyle = '#f2f2f2';
+  ctx.font = `800 ${size*0.36}px -apple-system, Segoe UI, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('20', cx, cy + size*0.015);
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+// Pre-render previews
+draw(document.getElementById('c192').getContext('2d'),192,false);
+draw(document.getElementById('c512').getContext('2d'),512,false);
+draw(document.getElementById('c512m').getContext('2d'),512,true);
+
+function dl(size, maskable) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  draw(c.getContext('2d'), size, maskable);
+  const a = document.createElement('a');
+  a.download = maskable ? `icon-${size}-maskable.png` : `icon-${size}.png`;
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+</script>
+</body></html>
