@@ -76,9 +76,21 @@ form select {
 
 .toggles {
   display: flex;
-  gap: 20px;
+  align-items: center;
+  gap: 12px;
   margin: 14px 0;
 }
+.test-btn {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+}
+.test-btn:active { color: var(--fg); }
 label.inline {
   display: inline-flex;
   align-items: center;
@@ -187,6 +199,25 @@ button.danger {
   transition: background-color 0.25s;
   overflow-y: auto;
   min-height: 0;
+}
+
+.workout-meta {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.workout-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.workout-summary {
+  color: var(--muted);
+  font-size: 14px;
 }
 
 .controls-hint {
@@ -303,6 +334,31 @@ button.danger {
 
 .workout-actions button {
   min-width: 86px;
+}
+
+/* Hold-to-confirm button (Stop) */
+.hold-btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.hold-btn .hold-label {
+  position: relative;
+  z-index: 1;
+}
+.hold-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--rest);
+  opacity: 0.35;
+  transform: translateX(-100%);
+  transition: transform 0s linear;
+  pointer-events: none;
+  z-index: 0;
+}
+.hold-btn.holding .hold-fill {
+  transform: translateX(0);
+  transition: transform 1s linear;
 }
 
 /* Phase background colors */

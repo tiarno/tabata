@@ -31,7 +31,6 @@ export class Workout {
   }
 
   start() {
-    A.beginPhase();
     // First phase: initial 3s prep with "Set 1 of M" announcement.
     this._enter(PHASES.PREP, 3, { voice: `Set 1 of ${this.cfg.sets}`, clickEverySec: true });
   }
@@ -78,8 +77,8 @@ export class Workout {
     this.phase = phase;
     this.phaseDur = duration;
     A.beginPhase();
-    this.phaseStart = A.now();
     this._scheduleSounds(phase, duration, opts);
+    this.phaseStart = A.now();
     this.on.onPhaseChange?.({
       phase, duration,
       setIdx: this.setIdx, repIdx: this.repIdx,
@@ -111,10 +110,10 @@ export class Workout {
     // Horn on DONE
     if (phase === PHASES.DONE) {
       A.scheduleHorn(t0);
-      return;
+      return t0;
     }
 
-    if (!cfg.clickEnabled) return;
+    if (!cfg.clickEnabled) return t0;
 
     // Click schedules
     const schedClicks = (offsetsFromEnd) => {
@@ -133,6 +132,7 @@ export class Workout {
       schedClicks([3, 2, 1]);
     }
     // REST: no clicks
+    return t0;
   }
 
   _loop() {
@@ -179,8 +179,11 @@ export class Workout {
             this._enter(PHASES.SETREST, cfg.setRestSec);
           } else {
             this._enter(PHASES.DONE, 2.0);
-            // DONE is a short visual phase; finish after horn.
-            setTimeout(() => this.on.onFinish?.({ aborted: false }), 2200);
+            setTimeout(() => {
+              if (this.stopped) return;
+              this.stopped = true;
+              this.on.onFinish?.({ aborted: false });
+            }, 2200);
           }
         }
         return;

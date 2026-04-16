@@ -1,5 +1,9 @@
 // Cache-first service worker for offline use.
-const CACHE = 'tabata-v1';
+// Bump APP_VERSION whenever a cached asset changes; the old cache is
+// dropped on activate, the new SW takes over via SKIP_WAITING, and the
+// client reloads on controllerchange.
+const APP_VERSION = '2';
+const CACHE = `tabata-v${APP_VERSION}`;
 const ASSETS = [
   './',
   'index.html',
@@ -14,7 +18,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
 });
 
 self.addEventListener('activate', (e) => {
@@ -23,6 +27,10 @@ self.addEventListener('activate', (e) => {
       keys.filter(k => k !== CACHE).map(k => caches.delete(k))
     )).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (e) => {

@@ -3,7 +3,7 @@
 import * as A from './audio.js';
 import { Workout, PHASES } from './workout.js';
 import {
-  DEFAULT_CONFIG, loadPresets, savePreset, deletePreset, loadLast, saveLast, PRESETS_KEY
+  loadPresets, savePreset, deletePreset, loadLast, saveLast, PRESETS_KEY
 } from './storage.js';
 
 // ---- Elements ----
@@ -19,6 +19,8 @@ const el = {
   presetList:   $('#preset-list'),
   btnToggleSettings: $('#btn-toggle-settings'),
   settingsPanel: $('#settings-panel'),
+  btnTestVoice: $('#btn-test-voice'),
+  btnTestClick: $('#btn-test-click'),
   name: $('#cfg-name'),
   tabatas: $('#cfg-tabatas'),
   sets: $('#cfg-sets'),
@@ -34,6 +36,8 @@ const el = {
   importFile: $('#import-file'),
   btnStart: $('#btn-start'),
   phaseLabel: $('#phase-label'),
+  workoutTitle: $('#workout-title'),
+  workoutSummary: $('#workout-summary'),
   overallPercent: $('#overall-percent'),
   progressFill: $('#progress-fill'),
   nextLabel: $('#next-label'),
@@ -96,6 +100,39 @@ function writeForm(cfg) {
   updateSummary();
 }
 
+function validateNumbers(cfg) {
+  const errors = [];
+  if (!Number.isFinite(cfg.tabatasPerSet) || cfg.tabatasPerSet < 1) errors.push('Tabatas per set must be at least 1.');
+  if (!Number.isFinite(cfg.sets) || cfg.sets < 1) errors.push('Sets must be at least 1.');
+  if (!Number.isFinite(cfg.workSec) || cfg.workSec < 5) errors.push('Work seconds must be at least 5.');
+  if (!Number.isFinite(cfg.restSec) || cfg.restSec < 3) errors.push('Rest seconds must be at least 3.');
+  if (!Number.isFinite(cfg.setRestSec) || cfg.setRestSec < 5) errors.push('Between-set rest must be at least 5.');
+  if (errors.length) throw new Error(errors.join(' '));
+}
+
+function validateForSave(cfg) {
+  if (!cfg.name.trim()) throw new Error('Preset name is required.');
+  validateNumbers(cfg);
+}
+
+function sanitizePreset(p) {
+  if (!p || typeof p !== 'object') return null;
+  const name = typeof p.name === 'string' ? p.name.trim().slice(0, 40) : '';
+  if (!name) return null;
+  const clean = {
+    name,
+    tabatasPerSet: +p.tabatasPerSet,
+    sets:          +p.sets,
+    workSec:       +p.workSec,
+    restSec:       +p.restSec,
+    setRestSec:    +p.setRestSec,
+    voiceEnabled:  p.voiceEnabled !== false,
+    clickEnabled:  p.clickEnabled !== false,
+  };
+  try { validateNumbers(clean); } catch { return null; }
+  return clean;
+}
+
 function updateSummary() {
   const c = readForm();
   const perSet = c.tabatasPerSet * (c.workSec + c.restSec) - c.restSec; // last rest optional? keep it simple
@@ -112,12 +149,35 @@ let phaseBaseElapsed = 0;
 
 function refreshPresetList() {
   const presets = loadPresets();
-  el.presetSelect.innerHTML =
-    '<option value="">-- presets --</option>' +
-    presets.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
-  el.presetList.innerHTML = presets.length ?
-    presets.map(p => `<button class="preset-item" data-name="${p.name}">${p.name}</button>`).join('') :
-    '<p class="no-presets">No presets saved yet. Use settings to create one.</p>';
+
+  el.presetSelect.replaceChildren();
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = '-- presets --';
+  el.presetSelect.append(placeholder);
+  for (const p of presets) {
+    const opt = document.createElement('option');
+    opt.value = p.name;
+    opt.textContent = p.name;
+    el.presetSelect.append(opt);
+  }
+
+  el.presetList.replaceChildren();
+  if (presets.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'no-presets';
+    empty.textContent = 'No presets saved yet. Use settings to create one.';
+    el.presetList.append(empty);
+  } else {
+    for (const p of presets) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'preset-item';
+      btn.dataset.name = p.name;
+      btn.textContent = p.name;
+      el.presetList.append(btn);
+    }
+  }
 }
 
 function totalWorkoutDuration(cfg) {
@@ -179,7 +239,12 @@ el.presetDelete.addEventListener('click', () => {
 
 el.btnSave.addEventListener('click', () => {
   const cfg = readForm();
-  if (!cfg.name) { alert('Give this preset a name first.'); return; }
+  try {
+    validateForSave(cfg);
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
   savePreset(cfg);
   refreshPresetList();
   el.presetSelect.value = cfg.name;
@@ -190,12 +255,28 @@ el.btnSave.addEventListener('click', () => {
   el[k].addEventListener('input', updateSummary)
 );
 
+// Audio previews
+el.btnTestVoice.addEventListener('click', async () => {
+  await A.unlockAudio();
+  A.speak('Rep 3, work');
+});
+el.btnTestClick.addEventListener('click', async () => {
+  await A.unlockAudio();
+  A.beginPhase();
+  for (let i = 0; i < 3; i++) A.scheduleClick(A.now() + 0.05 + i * 0.5);
+});
+
 // ---- Start / workout ----
 let workout = null;
 
 el.btnStart.addEventListener('click', async () => {
   const cfg = readForm();
-  if (cfg.sets < 1 || cfg.tabatasPerSet < 1) { alert('Need ≥1 set and ≥1 tabata.'); return; }
+  try {
+    validateNumbers(cfg);
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
   saveLast(cfg);
 
   // CRITICAL: unlock audio inside the tap handler.
@@ -207,9 +288,11 @@ el.btnStart.addEventListener('click', async () => {
 
   showScreen('workout');
   setPhaseClass('prep');
+  el.workoutTitle.textContent = cfg.name || 'Custom workout';
+  el.workoutSummary.textContent = `${cfg.sets} sets × ${cfg.tabatasPerSet} tabatas · ${formatDuration(totalWorkoutDuration(cfg))}`;
   el.metaReps.textContent = cfg.tabatasPerSet;
   el.metaSets.textContent = cfg.sets;
-  el.overallPercent.textContent = '0%';
+  el.overallPercent.textContent = `0% · 0:00 / ${formatDuration(workoutTotalDuration)}`;
   el.progressFill.style.width = '0%';
   el.nextLabel.textContent = 'Up next: WORK';
 
@@ -236,11 +319,31 @@ el.btnPause.addEventListener('click', () => {
 
 el.btnSkip.addEventListener('click', () => workout?.skip());
 
-el.btnStop.addEventListener('click', () => {
-  if (!workout) return;
-  if (!confirm('Stop workout?')) return;
-  workout.stop();
-});
+// Hold Stop for 1s to confirm.
+const STOP_HOLD_MS = 1000;
+let stopHoldTimer = null;
+function beginStopHold(e) {
+  if (!workout || stopHoldTimer) return;
+  e.preventDefault();
+  el.btnStop.classList.add('holding');
+  stopHoldTimer = setTimeout(() => {
+    stopHoldTimer = null;
+    el.btnStop.classList.remove('holding');
+    workout?.stop();
+  }, STOP_HOLD_MS);
+}
+function cancelStopHold() {
+  if (!stopHoldTimer) return;
+  clearTimeout(stopHoldTimer);
+  stopHoldTimer = null;
+  el.btnStop.classList.remove('holding');
+}
+el.btnStop.addEventListener('pointerdown', beginStopHold);
+el.btnStop.addEventListener('pointerup', cancelStopHold);
+el.btnStop.addEventListener('pointerleave', cancelStopHold);
+el.btnStop.addEventListener('pointercancel', cancelStopHold);
+// Suppress the default click (we own the gesture).
+el.btnStop.addEventListener('click', (e) => e.preventDefault());
 
 // ---- Export/Import presets ----
 el.btnExport.addEventListener('click', () => {
@@ -271,8 +374,9 @@ el.importFile.addEventListener('change', (e) => {
       const merged = [...existing];
       let added = 0;
       for (const preset of imported) {
-        if (preset.name && !merged.find(p => p.name === preset.name)) {
-          merged.push(preset);
+        const clean = sanitizePreset(preset);
+        if (clean && !merged.find(p => p.name === clean.name)) {
+          merged.push(clean);
           added++;
         }
       }
@@ -297,9 +401,16 @@ el.presetList.addEventListener('click', (e) => {
 });
 
 // ---- Settings toggle ----
+const SETTINGS_OPEN_KEY = 'tabata.settingsOpen.v1';
+function applySettingsOpen(open) {
+  el.settingsPanel.classList.toggle('collapsed', !open);
+  el.btnToggleSettings.textContent = open ? '⚙️ Hide Settings' : '⚙️ Customize Settings';
+}
+applySettingsOpen(localStorage.getItem(SETTINGS_OPEN_KEY) === '1');
 el.btnToggleSettings.addEventListener('click', () => {
-  el.settingsPanel.classList.toggle('collapsed');
-  el.btnToggleSettings.textContent = el.settingsPanel.classList.contains('collapsed') ? '⚙️ Customize Settings' : '⚙️ Hide Settings';
+  const open = el.settingsPanel.classList.contains('collapsed');
+  applySettingsOpen(open);
+  localStorage.setItem(SETTINGS_OPEN_KEY, open ? '1' : '0');
 });
 
 // ---- Workout callbacks ----
@@ -316,6 +427,12 @@ function handlePhaseChange({ phase, duration, setIdx, repIdx, totalReps, totalSe
   phaseBaseElapsed = phaseBaselineElapsed(phase, setIdx, repIdx, totalReps, totalSets, workout.cfg);
 }
 
+function formatDuration(totalSeconds) {
+  const mm = Math.floor(totalSeconds / 60);
+  const ss = totalSeconds % 60;
+  return `${mm}:${String(ss).padStart(2, '0')}`;
+}
+
 function handleTick({ phase, remaining, progress, duration }) {
   // Count: show ceil so "20" appears the full first second
   const shown = Math.max(0, Math.ceil(remaining));
@@ -324,12 +441,14 @@ function handleTick({ phase, remaining, progress, duration }) {
   const offset = RING_CIRC * (1 - progress);
   el.ring.setAttribute('stroke-dashoffset', offset.toFixed(1));
 
-  const elapsed = phaseBaseElapsed + (duration * progress);
+  const elapsed = Math.min(workoutTotalDuration, phaseBaseElapsed + (duration * progress));
   const pct = workoutTotalDuration > 0
     ? Math.min(100, Math.max(0, Math.round((elapsed / workoutTotalDuration) * 100)))
     : 0;
-  el.overallPercent.textContent = `${pct}%`;
+  el.overallPercent.textContent =
+    `${pct}% · ${formatDuration(Math.round(elapsed))} / ${formatDuration(workoutTotalDuration)}`;
   el.progressFill.style.width = `${pct}%`;
+  el.progressFill.parentElement?.setAttribute('aria-valuenow', String(pct));
 }
 
 function handleFinish({ aborted }) {
@@ -350,8 +469,9 @@ function labelFor(phase) {
 }
 
 function setPhaseClass(phase) {
-  document.body.className = document.body.className
-    .split(' ').filter(c => !c.startsWith('phase-')).join(' ').trim();
+  for (const cls of [...document.body.classList]) {
+    if (cls.startsWith('phase-')) document.body.classList.remove(cls);
+  }
   document.body.classList.add(`phase-${phase}`);
 }
 
@@ -362,9 +482,29 @@ function showScreen(name) {
 
 // ---- Service worker ----
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err =>
-      console.warn('SW registration failed:', err));
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('sw.js');
+      const promote = (sw) => sw.postMessage('SKIP_WAITING');
+      if (reg.waiting) promote(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            promote(sw);
+          }
+        });
+      });
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloaded) return;
+        reloaded = true;
+        location.reload();
+      });
+    } catch (err) {
+      console.warn('SW registration failed:', err);
+    }
   });
 }
 

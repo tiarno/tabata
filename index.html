@@ -67,7 +67,9 @@
 
       <div class="toggles">
         <label class="inline"><input type="checkbox" id="cfg-voice" checked> Voice</label>
+        <button id="btn-test-voice" type="button" class="test-btn" aria-label="Preview voice">▶︎</button>
         <label class="inline"><input type="checkbox" id="cfg-click" checked> Click</label>
+        <button id="btn-test-click" type="button" class="test-btn" aria-label="Preview click">▶︎</button>
       </div>
 
       <div class="summary" id="summary"></div>
@@ -84,7 +86,12 @@
 
 <!-- WORKOUT SCREEN -->
 <section id="screen-workout" class="screen">
-  <div class="phase-label" id="phase-label">READY</div>
+  <div class="workout-meta">
+    <div class="workout-title" id="workout-title">Custom workout</div>
+    <div class="workout-summary" id="workout-summary">Ready to start</div>
+  </div>
+
+  <div class="phase-label" id="phase-label" aria-live="polite" aria-atomic="true">READY</div>
 
   <div class="ring-wrap">
     <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
@@ -103,19 +110,22 @@
   <div class="workout-progress">
     <div class="progress-top">
       <span id="overall-percent">0%</span>
-      <span id="next-label">Up next: —</span>
+      <span id="next-label" aria-live="polite">Up next: —</span>
     </div>
-    <div class="progress-bar">
+    <div class="progress-bar" role="progressbar" aria-label="Workout progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
       <div class="progress-fill" id="progress-fill"></div>
     </div>
   </div>
 
-  <div class="controls-hint">Tap below any time to pause, skip, or stop.</div>
+  <div class="controls-hint">Tap to pause or skip. Hold Stop to end.</div>
 
   <div class="actions workout-actions">
     <button id="btn-pause" type="button">Pause</button>
     <button id="btn-skip"  type="button">Skip</button>
-    <button id="btn-stop"  type="button" class="danger">Stop</button>
+    <button id="btn-stop"  type="button" class="danger hold-btn">
+      <span class="hold-fill" aria-hidden="true"></span>
+      <span class="hold-label">Stop</span>
+    </button>
   </div>
 </section>
 
