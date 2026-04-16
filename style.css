@@ -181,9 +181,11 @@ button.danger {
 /* ===== Workout screen ===== */
 #screen-workout {
   padding: 16px;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   transition: background-color 0.25s;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .phase-label {
