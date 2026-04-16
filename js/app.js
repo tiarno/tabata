@@ -34,6 +34,9 @@ const el = {
   importFile: $('#import-file'),
   btnStart: $('#btn-start'),
   phaseLabel: $('#phase-label'),
+  overallPercent: $('#overall-percent'),
+  progressFill: $('#progress-fill'),
+  nextLabel: $('#next-label'),
   count: $('#count'),
   ring: $('#ring-progress'),
   metaRep: $('#meta-rep'),
@@ -104,6 +107,9 @@ function updateSummary() {
     `Total ≈ ${mm}:${String(ss).padStart(2,'0')}`;
 }
 
+let workoutTotalDuration = 0;
+let phaseBaseElapsed = 0;
+
 function refreshPresetList() {
   const presets = loadPresets();
   el.presetSelect.innerHTML =
@@ -112,6 +118,47 @@ function refreshPresetList() {
   el.presetList.innerHTML = presets.length ?
     presets.map(p => `<button class="preset-item" data-name="${p.name}">${p.name}</button>`).join('') :
     '<p class="no-presets">No presets saved yet. Use settings to create one.</p>';
+}
+
+function totalWorkoutDuration(cfg) {
+  const perSet = cfg.tabatasPerSet * (cfg.workSec + cfg.restSec) - cfg.restSec;
+  return 3 + cfg.sets * perSet + (cfg.sets - 1) * cfg.setRestSec;
+}
+
+function phaseBaselineElapsed(phase, setIdx, repIdx, totalReps, totalSets, cfg) {
+  if (phase === PHASES.PREP) return 0;
+  const perSet = cfg.tabatasPerSet * cfg.workSec + (cfg.tabatasPerSet - 1) * cfg.restSec;
+  let elapsed = 3 + setIdx * perSet;
+  if (phase === PHASES.WORK) {
+    elapsed += repIdx * (cfg.workSec + cfg.restSec);
+  } else if (phase === PHASES.REST) {
+    elapsed += repIdx * cfg.workSec + Math.max(0, repIdx - 1) * cfg.restSec;
+  } else if (phase === PHASES.SETREST) {
+    elapsed += cfg.tabatasPerSet * cfg.workSec + (cfg.tabatasPerSet - 1) * cfg.restSec;
+  } else if (phase === PHASES.DONE) {
+    elapsed += cfg.sets * perSet + (cfg.sets - 1) * cfg.setRestSec;
+  }
+  return elapsed;
+}
+
+function nextPhaseLabel(phase, setIdx, repIdx, totalReps, totalSets) {
+  switch (phase) {
+    case PHASES.PREP:
+      return 'Up next: WORK';
+    case PHASES.WORK:
+      if (repIdx === totalReps - 1) {
+        return setIdx === totalSets - 1 ? 'Up next: DONE' : 'Up next: SET REST';
+      }
+      return 'Up next: REST';
+    case PHASES.REST:
+      return 'Up next: WORK';
+    case PHASES.SETREST:
+      return 'Up next: WORK';
+    case PHASES.DONE:
+      return 'Up next: —';
+    default:
+      return 'Up next: —';
+  }
 }
 
 // ---- Preset handlers ----
@@ -155,10 +202,16 @@ el.btnStart.addEventListener('click', async () => {
   await A.unlockAudio();
   await requestWakeLock();
 
+  workoutTotalDuration = totalWorkoutDuration(cfg);
+  phaseBaseElapsed = 0;
+
   showScreen('workout');
   setPhaseClass('prep');
   el.metaReps.textContent = cfg.tabatasPerSet;
   el.metaSets.textContent = cfg.sets;
+  el.overallPercent.textContent = '0%';
+  el.progressFill.style.width = '0%';
+  el.nextLabel.textContent = 'Up next: WORK';
 
   workout = new Workout(cfg, {
     onPhaseChange: handlePhaseChange,
@@ -259,15 +312,24 @@ function handlePhaseChange({ phase, duration, setIdx, repIdx, totalReps, totalSe
   el.metaReps.textContent = totalReps;
   el.metaSet.textContent  = Math.min(setIdx + 1, totalSets);
   el.metaSets.textContent = totalSets;
+  el.nextLabel.textContent = nextPhaseLabel(phase, setIdx, repIdx, totalReps, totalSets);
+  phaseBaseElapsed = phaseBaselineElapsed(phase, setIdx, repIdx, totalReps, totalSets, workout.cfg);
 }
 
-function handleTick({ phase, remaining, progress }) {
+function handleTick({ phase, remaining, progress, duration }) {
   // Count: show ceil so "20" appears the full first second
   const shown = Math.max(0, Math.ceil(remaining));
   el.count.textContent = shown;
   // Ring fills from empty → full over the phase
   const offset = RING_CIRC * (1 - progress);
   el.ring.setAttribute('stroke-dashoffset', offset.toFixed(1));
+
+  const elapsed = phaseBaseElapsed + (duration * progress);
+  const pct = workoutTotalDuration > 0
+    ? Math.min(100, Math.max(0, Math.round((elapsed / workoutTotalDuration) * 100)))
+    : 0;
+  el.overallPercent.textContent = `${pct}%`;
+  el.progressFill.style.width = `${pct}%`;
 }
 
 function handleFinish({ aborted }) {

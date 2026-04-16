@@ -236,6 +236,44 @@ button.danger {
 }
 .meta span { color: var(--fg); font-weight: 600; }
 
+.workout-progress {
+  width: 100%;
+  max-width: 500px;
+  margin: 20px 0;
+  gap: 10px;
+  display: flex;
+  flex-direction: column;
+}
+.progress-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+#overall-percent {
+  color: var(--fg);
+  font-weight: 700;
+}
+#next-label {
+  text-align: right;
+  min-width: 130px;
+}
+.progress-bar {
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: currentColor;
+  border-radius: 999px;
+  transition: width 0.15s ease;
+}
+
 .workout-actions { width: 100%; max-width: 500px; }
 
 /* Phase background colors */
@@ -250,3 +288,9 @@ body.phase-work    .ring-progress { stroke: var(--work); }
 body.phase-rest    .ring-progress { stroke: var(--rest); }
 body.phase-setrest .ring-progress { stroke: var(--setrest); }
 body.phase-done    .ring-progress { stroke: var(--done); }
+
+body.phase-prep    .progress-fill { background: var(--prep); }
+body.phase-work    .progress-fill { background: var(--work); }
+body.phase-rest    .progress-fill { background: var(--rest); }
+body.phase-setrest .progress-fill { background: var(--setrest); }
+body.phase-done    .progress-fill { background: var(--done); }
