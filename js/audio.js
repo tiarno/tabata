@@ -51,18 +51,23 @@ export function beginPhase() {
 }
 
 // Cancel scheduled-but-not-yet-played audio in this phase.
-// speechSynthesis.cancel() immediately followed by speak() can drop the
-// speak on iOS Safari (and momentarily hang WebAudio output with it) —
-// and Firefox has similar cancel→speak fragility. Only cancel when there
-// is actually something speaking or queued: natural phase transitions
-// happen long after the previous utterance finished, so the cancel is a
-// no-op that introduces a race for nothing.
+// Two guards, both required:
+//   1. Only cancel when a phase was actually active (phaseGain was set).
+//      Without this, the very first beginPhase() of a workout calls endPhase()
+//      first, which would cancel the silent warm-up utterance queued by
+//      unlockAudio() — on iOS that kills the synth for the whole workout.
+//   2. Only cancel when speech is actually speaking or pending. The
+//      cancel→speak sequence is fragile on iOS Safari (drops the speak
+//      and briefly hangs WebAudio) and Firefox; natural phase transitions
+//      happen long after the previous utterance finished, so the cancel
+//      is a no-op race for nothing.
 export function endPhase() {
+  const wasPhaseActive = phaseGain !== null;
   if (phaseGain) {
     try { phaseGain.disconnect(); } catch {}
     phaseGain = null;
   }
-  if ('speechSynthesis' in window &&
+  if (wasPhaseActive && 'speechSynthesis' in window &&
       (speechSynthesis.speaking || speechSynthesis.pending)) {
     speechSynthesis.cancel();
   }

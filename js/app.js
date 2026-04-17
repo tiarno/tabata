@@ -188,17 +188,27 @@ function totalWorkoutDuration(cfg) {
 function phaseBaselineElapsed(phase, setIdx, repIdx, totalReps, totalSets, cfg) {
   if (phase === PHASES.PREP) return 0;
   const perSet = cfg.tabatasPerSet * cfg.workSec + (cfg.tabatasPerSet - 1) * cfg.restSec;
-  let elapsed = 3 + setIdx * perSet;
+  // Elapsed at the start of set `setIdx` (0-based): 3s prep + all prior
+  // sets AND their trailing setrests.
+  const beforeThisSet = 3 + setIdx * (perSet + cfg.setRestSec);
   if (phase === PHASES.WORK) {
-    elapsed += repIdx * (cfg.workSec + cfg.restSec);
-  } else if (phase === PHASES.REST) {
-    elapsed += repIdx * cfg.workSec + Math.max(0, repIdx - 1) * cfg.restSec;
-  } else if (phase === PHASES.SETREST) {
-    elapsed += cfg.tabatasPerSet * cfg.workSec + (cfg.tabatasPerSet - 1) * cfg.restSec;
-  } else if (phase === PHASES.DONE) {
-    elapsed += cfg.sets * perSet + (cfg.sets - 1) * cfg.setRestSec;
+    return beforeThisSet + repIdx * (cfg.workSec + cfg.restSec);
   }
-  return elapsed;
+  if (phase === PHASES.REST) {
+    // After rep `repIdx-1`: `repIdx` WORKs done plus `repIdx-1` RESTs done.
+    return beforeThisSet + repIdx * cfg.workSec + Math.max(0, repIdx - 1) * cfg.restSec;
+  }
+  if (phase === PHASES.SETREST) {
+    // setIdx was incremented before entering SETREST (setIdx=N = N sets
+    // complete). beforeThisSet includes the setrest we haven't started
+    // yet, so back it out.
+    return beforeThisSet - cfg.setRestSec;
+  }
+  if (phase === PHASES.DONE) {
+    // All sets done, no trailing setrest.
+    return beforeThisSet - cfg.setRestSec;
+  }
+  return 0;
 }
 
 function nextPhaseLabel(phase, setIdx, repIdx, totalReps, totalSets) {
@@ -269,7 +279,22 @@ el.btnTestClick.addEventListener('click', async () => {
 // ---- Start / workout ----
 let workout = null;
 
+// SW reload deferral: if a new SW activates mid-workout, don't yank the page.
+// handleFinish flushes this after the workout ends.
+let swReloaded = false;
+let swReloadPending = false;
+function maybeReloadForSW() {
+  if (swReloadPending && !swReloaded) {
+    swReloaded = true;
+    location.reload();
+  }
+}
+
 el.btnStart.addEventListener('click', async () => {
+  // Guard against rapid double-tap: the handler is async, so a second tap
+  // before the first completes would create a second Workout, orphan the
+  // first (still running its rAF loop), and fire duplicate callbacks.
+  if (workout) return;
   const cfg = readForm();
   try {
     validateNumbers(cfg);
@@ -454,7 +479,10 @@ function handleTick({ phase, remaining, progress, duration }) {
 function handleFinish({ aborted }) {
   releaseWakeLock();
   workout = null;
-  setTimeout(() => showScreen('settings'), aborted ? 100 : 1200);
+  setTimeout(() => {
+    showScreen('settings');
+    maybeReloadForSW();
+  }, aborted ? 100 : 1200);
 }
 
 function labelFor(phase) {
@@ -496,10 +524,11 @@ if ('serviceWorker' in navigator) {
           }
         });
       });
-      let reloaded = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (reloaded) return;
-        reloaded = true;
+        if (swReloaded) return;
+        // Don't yank the page mid-workout. Defer until handleFinish.
+        if (workout) { swReloadPending = true; return; }
+        swReloaded = true;
         location.reload();
       });
     } catch (err) {
