@@ -46,12 +46,18 @@ export function beginPhase() {
 }
 
 // Cancel all scheduled-but-not-yet-played audio in this phase.
+// iOS Safari race: speechSynthesis.cancel() immediately followed by speak()
+// can drop the speak (and momentarily hang WebAudio output with it). Skip
+// the cancel when no phase was active — i.e. the very first beginPhase of
+// a workout — so the unlockAudio warmup utterance isn't torn out from under
+// the first "Set 1 of M" speak.
 export function endPhase() {
+  const wasPhaseActive = phaseGain !== null;
   if (phaseGain) {
     try { phaseGain.disconnect(); } catch {}
     phaseGain = null;
   }
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  if (wasPhaseActive && 'speechSynthesis' in window) speechSynthesis.cancel();
 }
 
 // A short, pleasant click (1 kHz tone, ~30 ms exp decay).

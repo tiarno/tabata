@@ -2,7 +2,7 @@
 // Bump APP_VERSION whenever a cached asset changes; the old cache is
 // dropped on activate, the new SW takes over via SKIP_WAITING, and the
 // client reloads on controllerchange.
-const APP_VERSION = '2';
+const APP_VERSION = '3';
 const CACHE = `tabata-v${APP_VERSION}`;
 const ASSETS = [
   './',
