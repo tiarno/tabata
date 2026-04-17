@@ -31,7 +31,7 @@ body {
            env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-.screen { display: none; height: 100vh; flex-direction: column; }
+.screen { display: none; height: 100dvh; flex-direction: column; }
 .screen.active { display: flex; }
 
 /* ===== Settings screen ===== */
