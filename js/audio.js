@@ -40,24 +40,32 @@ export function now() { return ensureCtx().currentTime; }
 // Begin a new phase: fresh gain node for isolated cancel.
 export function beginPhase() {
   endPhase();
-  phaseGain = ensureCtx().createGain();
+  const c = ensureCtx();
+  // Resume if the browser suspended the context (Firefox battery saver,
+  // iOS backgrounding, tab focus loss). Without this, mid-workout phases
+  // can go silent with no recovery.
+  if (c.state === 'suspended') c.resume().catch(() => {});
+  phaseGain = c.createGain();
   phaseGain.gain.value = 1;
-  phaseGain.connect(ctx.destination);
+  phaseGain.connect(c.destination);
 }
 
-// Cancel all scheduled-but-not-yet-played audio in this phase.
-// iOS Safari race: speechSynthesis.cancel() immediately followed by speak()
-// can drop the speak (and momentarily hang WebAudio output with it). Skip
-// the cancel when no phase was active — i.e. the very first beginPhase of
-// a workout — so the unlockAudio warmup utterance isn't torn out from under
-// the first "Set 1 of M" speak.
+// Cancel scheduled-but-not-yet-played audio in this phase.
+// speechSynthesis.cancel() immediately followed by speak() can drop the
+// speak on iOS Safari (and momentarily hang WebAudio output with it) —
+// and Firefox has similar cancel→speak fragility. Only cancel when there
+// is actually something speaking or queued: natural phase transitions
+// happen long after the previous utterance finished, so the cancel is a
+// no-op that introduces a race for nothing.
 export function endPhase() {
-  const wasPhaseActive = phaseGain !== null;
   if (phaseGain) {
     try { phaseGain.disconnect(); } catch {}
     phaseGain = null;
   }
-  if (wasPhaseActive && 'speechSynthesis' in window) speechSynthesis.cancel();
+  if ('speechSynthesis' in window &&
+      (speechSynthesis.speaking || speechSynthesis.pending)) {
+    speechSynthesis.cancel();
+  }
 }
 
 // A short, pleasant click (1 kHz tone, ~30 ms exp decay).

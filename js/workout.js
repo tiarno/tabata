@@ -5,8 +5,8 @@
 //   WORK      – cfg.workSec, click last 5 s, voice "Rep X, work"
 //   REST      – cfg.restSec, voice "Rest"
 //   (repeat WORK/REST cfg.tabatasPerSet times)
-//   SETREST   – cfg.setRestSec (between sets only), voice "Set Y of M",
-//               click last 3 s
+//   SETREST   – cfg.setRestSec (between sets only), voice "Rest" on entry
+//               and "Set Y of M" at T-5 s (single announce if short), click last 3 s
 //   DONE      – horn
 //
 // Timing source of truth: AudioContext.currentTime. rAF only updates UI.
@@ -14,6 +14,13 @@
 import * as A from './audio.js';
 
 export const PHASES = { PREP:'prep', WORK:'work', REST:'rest', SETREST:'setrest', DONE:'done' };
+
+// How many seconds before SETREST ends to announce the next set.
+// The "Set X of M" speech takes ~1.5s, then clicks at T-3, T-2, T-1.
+const SETREST_LEAD_SEC = 5;
+// Minimum setrest duration to split the announcement into "Rest" now +
+// "Set X" near the end. Shorter rests get a single "Set X" at entry.
+const SETREST_SPLIT_MIN = 12;
 
 export class Workout {
   constructor(cfg, handlers) {
@@ -28,6 +35,15 @@ export class Workout {
     this.pausedAt = null;
     this.stopped = false;
     this._raf = 0;
+    this._voiceTimer = null;
+    this._setRestAnnounced = false;
+  }
+
+  _clearVoiceTimer() {
+    if (this._voiceTimer) {
+      clearTimeout(this._voiceTimer);
+      this._voiceTimer = null;
+    }
   }
 
   start() {
@@ -39,6 +55,7 @@ export class Workout {
     if (this.pausedAt != null || this.stopped) return;
     this.pausedAt = A.now();
     cancelAnimationFrame(this._raf);
+    this._clearVoiceTimer();
     A.endPhase(); // kill pending clicks / TTS
   }
 
@@ -58,6 +75,7 @@ export class Workout {
     if (this.stopped) return;
     if (this.pausedAt != null) { this.pausedAt = null; }
     cancelAnimationFrame(this._raf);
+    this._clearVoiceTimer();
     A.endPhase();
     this._advance();
   }
@@ -65,6 +83,7 @@ export class Workout {
   stop() {
     this.stopped = true;
     cancelAnimationFrame(this._raf);
+    this._clearVoiceTimer();
     A.endPhase();
     this.on.onFinish?.({ aborted: true });
   }
@@ -76,6 +95,7 @@ export class Workout {
   _enter(phase, duration, opts = {}) {
     this.phase = phase;
     this.phaseDur = duration;
+    if (phase === PHASES.SETREST) this._setRestAnnounced = false;
     A.beginPhase();
     this._scheduleSounds(phase, duration, opts);
     this.phaseStart = A.now();
@@ -91,6 +111,8 @@ export class Workout {
     const t0 = A.now() + 0.05; // small lead for scheduling
     const cfg = this.cfg;
 
+    this._clearVoiceTimer();
+
     // Voice cue at phase entry (skip if this is a pause-resume).
     if (!opts.fromPauseResume && cfg.voiceEnabled) {
       if (phase === PHASES.WORK) {
@@ -98,13 +120,32 @@ export class Workout {
       } else if (phase === PHASES.REST) {
         A.speak('Rest');
       } else if (phase === PHASES.SETREST) {
-        // About to start set (setIdx+1) after finishing setIdx
-        A.speak(`Set ${this.setIdx + 1} of ${cfg.sets}`);
+        // Long between-set rest: announce "Rest" now, defer next-set cue
+        // to T-SETREST_LEAD_SEC. Short rest: single announce like before.
+        if (remaining >= SETREST_SPLIT_MIN) {
+          A.speak('Rest');
+        } else {
+          A.speak(`Set ${this.setIdx + 1} of ${cfg.sets}`);
+          this._setRestAnnounced = true;
+        }
       } else if (phase === PHASES.PREP && opts.voice) {
         A.speak(opts.voice);
       } else if (phase === PHASES.DONE) {
         A.speak('Workout complete');
       }
+    }
+
+    // Deferred "Set X of M" for long setrest — also fires correctly after
+    // a pause/resume because _scheduleSounds is re-called on resume.
+    if (phase === PHASES.SETREST && cfg.voiceEnabled && !this._setRestAnnounced) {
+      const leadMs = Math.max(0, (remaining - SETREST_LEAD_SEC) * 1000);
+      this._voiceTimer = setTimeout(() => {
+        this._voiceTimer = null;
+        if (this.phase === PHASES.SETREST && this.pausedAt == null && !this.stopped) {
+          this._setRestAnnounced = true;
+          A.speak(`Set ${this.setIdx + 1} of ${this.cfg.sets}`);
+        }
+      }, leadMs);
     }
 
     // Horn on DONE
