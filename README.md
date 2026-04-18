@@ -69,8 +69,9 @@ Open the generated `https://xxxx.ngrok-free.app` URL on the iPhone.
   `AudioContext.resume()` and speaks a silent utterance. Both are handled in
   `app.js` on the Start tap. Programmatic calls from timers won't work.
 - **Wake Lock:** only available iOS 16.4+. Silently no-ops on older versions.
-- **Voices:** `speechSynthesis.getVoices()` may return empty on first call.
-  The TTS warmup in `audio.js` handles this.
+- **Voices:** `speechSynthesis.getVoices()` may return empty on first call;
+  `speak()` picks an English voice when one is available and otherwise lets
+  the platform default handle it.
 - **Home-screen vs Safari:** installed PWA has its own storage; presets saved
   in Safari won't appear after installing (and vice versa). Save presets
   from the installed app.
