@@ -12,9 +12,13 @@ function ensureCtx() {
 }
 
 // Must be called from a user gesture (tap) to satisfy iOS autoplay policy.
-export async function unlockAudio() {
+// Pass firstUtterance to speak it gesture-bound in the same call — iOS
+// requires the initial speechSynthesis.speak() to originate from a user
+// gesture, and queueing a second speak behind a silent warmup drops the
+// real utterance on Firefox iOS. Speaking once, inside the gesture,
+// avoids both problems.
+export async function unlockAudio(firstUtterance) {
   ensureCtx();
-  if (ctx.state === 'suspended') await ctx.resume();
 
   // 1-sample silent buffer unlocks WebAudio on iOS
   const buf = ctx.createBuffer(1, 1, 22050);
@@ -22,6 +26,11 @@ export async function unlockAudio() {
   src.buffer = buf;
   src.connect(ctx.destination);
   src.start(0);
+
+  // Speech unlock BEFORE the async resume — keeps the gesture intact.
+  if (firstUtterance) speak(firstUtterance);
+
+  if (ctx.state === 'suspended') await ctx.resume();
 
   unlocked = true;
 }
@@ -115,7 +124,7 @@ export function scheduleHorn(when) {
 
 // TTS via SpeechSynthesis. Speaks immediately; caller manages timing.
 export function speak(text) {
-  if (!('speechSynthesis' in window)) return;
+  if (!text || !('speechSynthesis' in window)) return;
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.05;
   u.pitch = 1.0;

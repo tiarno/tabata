@@ -304,8 +304,9 @@ el.btnStart.addEventListener('click', async () => {
   }
   saveLast(cfg);
 
-  // CRITICAL: unlock audio inside the tap handler.
-  await A.unlockAudio();
+  // CRITICAL: unlock audio inside the tap handler. Speak "Set 1 of M"
+  // here so the first utterance is gesture-bound (iOS requirement).
+  await A.unlockAudio(cfg.voiceEnabled ? `Set 1 of ${cfg.sets}` : null);
   await requestWakeLock();
 
   workoutTotalDuration = totalWorkoutDuration(cfg);

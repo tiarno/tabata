@@ -47,8 +47,9 @@ export class Workout {
   }
 
   start() {
-    // First phase: initial 3s prep with "Set 1 of M" announcement.
-    this._enter(PHASES.PREP, 3, { voice: `Set 1 of ${this.cfg.sets}`, clickEverySec: true });
+    // First phase: 3s prep, clicks only. "Set 1 of M" is spoken during
+    // unlockAudio so it stays bound to the user gesture on iOS.
+    this._enter(PHASES.PREP, 3, { clickEverySec: true });
   }
 
   pause() {
@@ -128,8 +129,6 @@ export class Workout {
           A.speak(`Set ${this.setIdx + 1} of ${cfg.sets}`);
           this._setRestAnnounced = true;
         }
-      } else if (phase === PHASES.PREP && opts.voice) {
-        A.speak(opts.voice);
       } else if (phase === PHASES.DONE) {
         A.speak('Workout complete');
       }
