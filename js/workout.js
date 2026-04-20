@@ -5,7 +5,7 @@
 //   WORK      – cfg.workSec, click last 5 s, voice "Rep X, work"
 //   REST      – cfg.restSec, voice "Rest"
 //   (repeat WORK/REST cfg.tabatasPerSet times)
-//   SETREST   – cfg.setRestSec (between sets only), voice "Rest" on entry
+//   SETREST   – cfg.setRestSec (between sets only), voice "Break" on entry
 //               and "Set Y of M" at T-5 s (single announce if short), click last 3 s
 //   DONE      – horn
 //
@@ -121,10 +121,10 @@ export class Workout {
       } else if (phase === PHASES.REST) {
         A.speak('Rest');
       } else if (phase === PHASES.SETREST) {
-        // Long between-set rest: announce "Rest" now, defer next-set cue
+        // Long between-set rest: announce "Break" now, defer next-set cue
         // to T-SETREST_LEAD_SEC. Short rest: single announce like before.
         if (remaining >= SETREST_SPLIT_MIN) {
-          A.speak('Rest');
+          A.speak('Break');
         } else {
           A.speak(`Set ${this.setIdx + 1} of ${cfg.sets}`);
           this._setRestAnnounced = true;

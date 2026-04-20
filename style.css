@@ -37,6 +37,10 @@ body {
 /* ===== Settings screen ===== */
 #screen-settings {
   padding: 16px;
+  /* Extra bottom room so the Save button can be scrolled above the iOS
+     keyboard after focusing a number input — otherwise Safari keeps the
+     focused input pinned and the button stays hidden behind the keyboard. */
+  padding-bottom: calc(env(safe-area-inset-bottom) + 50vh);
   overflow-y: auto;
 }
 

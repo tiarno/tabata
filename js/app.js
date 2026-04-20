@@ -217,7 +217,7 @@ function nextPhaseLabel(phase, setIdx, repIdx, totalReps, totalSets) {
       return 'Up next: WORK';
     case PHASES.WORK:
       if (repIdx === totalReps - 1) {
-        return setIdx === totalSets - 1 ? 'Up next: DONE' : 'Up next: SET REST';
+        return setIdx === totalSets - 1 ? 'Up next: DONE' : 'Up next: BREAK';
       }
       return 'Up next: REST';
     case PHASES.REST:
@@ -491,7 +491,7 @@ function labelFor(phase) {
     case PHASES.PREP:    return 'GET READY';
     case PHASES.WORK:    return 'WORK';
     case PHASES.REST:    return 'REST';
-    case PHASES.SETREST: return 'SET REST';
+    case PHASES.SETREST: return 'BREAK';
     case PHASES.DONE:    return 'DONE';
     default: return '';
   }
