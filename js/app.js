@@ -211,23 +211,25 @@ function phaseBaselineElapsed(phase, setIdx, repIdx, totalReps, totalSets, cfg) 
   return 0;
 }
 
-function nextPhaseLabel(phase, setIdx, repIdx, totalReps, totalSets) {
+function nextPhaseLabel(phase, setIdx, repIdx, totalReps, totalSets, cfg) {
+  const work = `Next: WORK ${cfg.workSec}s`;
   switch (phase) {
     case PHASES.PREP:
-      return 'Up next: WORK';
+      return work;
     case PHASES.WORK:
       if (repIdx === totalReps - 1) {
-        return setIdx === totalSets - 1 ? 'Up next: DONE' : 'Up next: BREAK';
+        return setIdx === totalSets - 1
+          ? 'Final rep — finish strong'
+          : `Next: BREAK ${cfg.setRestSec}s`;
       }
-      return 'Up next: REST';
+      return `Next: REST ${cfg.restSec}s`;
     case PHASES.REST:
-      return 'Up next: WORK';
     case PHASES.SETREST:
-      return 'Up next: WORK';
+      return work;
     case PHASES.DONE:
-      return 'Up next: —';
+      return '';
     default:
-      return 'Up next: —';
+      return '';
   }
 }
 
@@ -320,7 +322,7 @@ el.btnStart.addEventListener('click', async () => {
   el.metaSets.textContent = cfg.sets;
   el.overallPercent.textContent = `0% · 0:00 / ${formatDuration(workoutTotalDuration)}`;
   el.progressFill.style.width = '0%';
-  el.nextLabel.textContent = 'Up next: WORK';
+  el.nextLabel.textContent = `Next: WORK ${cfg.workSec}s`;
 
   workout = new Workout(cfg, {
     onPhaseChange: handlePhaseChange,
@@ -449,7 +451,7 @@ function handlePhaseChange({ phase, duration, setIdx, repIdx, totalReps, totalSe
   el.metaReps.textContent = totalReps;
   el.metaSet.textContent  = Math.min(setIdx + 1, totalSets);
   el.metaSets.textContent = totalSets;
-  el.nextLabel.textContent = nextPhaseLabel(phase, setIdx, repIdx, totalReps, totalSets);
+  el.nextLabel.textContent = nextPhaseLabel(phase, setIdx, repIdx, totalReps, totalSets, workout.cfg);
   phaseBaseElapsed = phaseBaselineElapsed(phase, setIdx, repIdx, totalReps, totalSets, workout.cfg);
 }
 

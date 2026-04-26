@@ -37,6 +37,22 @@ export class Workout {
     this._raf = 0;
     this._voiceTimer = null;
     this._setRestAnnounced = false;
+    // Descending list of seconds-from-end at which to fire a click. The
+    // tick loop fires + shifts as remaining crosses each boundary, so
+    // unfired clicks survive a pause/resume without rescheduling.
+    this._pendingClicks = [];
+  }
+
+  _clicksFor(phase, duration) {
+    if (!this.cfg.clickEnabled) return [];
+    if (phase === PHASES.PREP) {
+      const out = [];
+      for (let s = Math.floor(duration); s >= 1; s--) out.push(s);
+      return out;
+    }
+    if (phase === PHASES.WORK)    return [5, 4, 3, 2, 1];
+    if (phase === PHASES.SETREST) return [3, 2, 1];
+    return [];
   }
 
   _clearVoiceTimer() {
@@ -97,6 +113,7 @@ export class Workout {
     this.phase = phase;
     this.phaseDur = duration;
     if (phase === PHASES.SETREST) this._setRestAnnounced = false;
+    this._pendingClicks = this._clicksFor(phase, duration);
     A.beginPhase();
     this._scheduleSounds(phase, duration, opts);
     this.phaseStart = A.now();
@@ -153,25 +170,10 @@ export class Workout {
       return t0;
     }
 
-    if (!cfg.clickEnabled) return t0;
-
-    // Click schedules
-    const schedClicks = (offsetsFromEnd) => {
-      offsetsFromEnd.forEach(sec => {
-        const when = t0 + (remaining - sec);
-        if (when > A.now()) A.scheduleClick(when);
-      });
-    };
-
-    if (phase === PHASES.PREP) {
-      // 1 click/s for whole (short) prep
-      for (let s = Math.floor(remaining); s >= 1; s--) schedClicks([s]);
-    } else if (phase === PHASES.WORK) {
-      schedClicks([5, 4, 3, 2, 1]);
-    } else if (phase === PHASES.SETREST) {
-      schedClicks([3, 2, 1]);
-    }
-    // REST: no clicks
+    // Clicks are fired just-in-time from the rAF tick (see _loop). iOS
+    // Safari drops far-future osc.start() schedules when the audio
+    // session is interrupted (speech synthesis, screen idle, etc), so
+    // pre-scheduling 15+ seconds out at WORK entry was unreliable.
     return t0;
   }
 
@@ -180,6 +182,12 @@ export class Workout {
       if (this.stopped || this.pausedAt != null) return;
       const elapsed = A.now() - this.phaseStart;
       const remaining = Math.max(0, this.phaseDur - elapsed);
+      // Fire any clicks whose boundary has been crossed. Loop covers
+      // frame skips that span more than one boundary (e.g. browser lag).
+      while (this._pendingClicks.length > 0 && remaining <= this._pendingClicks[0]) {
+        this._pendingClicks.shift();
+        A.scheduleClick(A.now() + 0.01);
+      }
       this.on.onTick?.({
         phase: this.phase,
         remaining,

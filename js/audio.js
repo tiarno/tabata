@@ -70,6 +70,9 @@ export function endPhase() {
 // A short, pleasant click (1 kHz tone, ~30 ms exp decay).
 export function scheduleClick(when) {
   if (!phaseGain) return;
+  // iOS may suspend the context behind speechSynthesis or visibility
+  // changes; resume here so JIT-scheduled clicks aren't silenced.
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   const osc = ctx.createOscillator();
   const g   = ctx.createGain();
   osc.type = 'square';
