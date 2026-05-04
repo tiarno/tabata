@@ -11,6 +11,21 @@ function ensureCtx() {
   return ctx;
 }
 
+// Near-silent oscillator (~-100 dB) that runs the entire session. iOS
+// releases the audio session when the context goes quiet, which causes
+// subsequent Web Audio clips to be silenced even when ctx.state is
+// 'running'. Keeping the graph producing any nonzero signal prevents that.
+let keepAliveOsc = null;
+function startKeepAlive() {
+  if (keepAliveOsc || !ctx) return;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  g.gain.value = 0.00001; // -100 dB — inaudible, session stays alive
+  osc.connect(g).connect(ctx.destination);
+  osc.start();
+  keepAliveOsc = osc;
+}
+
 // Must be called from a user gesture (tap) to satisfy iOS autoplay policy.
 // Pass firstUtterance to speak it gesture-bound in the same call — iOS
 // requires the initial speechSynthesis.speak() to originate from a user
@@ -31,6 +46,9 @@ export async function unlockAudio(firstUtterance) {
   if (firstUtterance) speak(firstUtterance);
 
   if (ctx.state === 'suspended') await ctx.resume();
+
+  // Keep-alive starts after ctx is running so the oscillator node is active.
+  startKeepAlive();
 
   unlocked = true;
 }
@@ -137,5 +155,10 @@ export function speak(text) {
   const en = voices.find(v => /en[-_]US/i.test(v.lang)) ||
              voices.find(v => /^en/i.test(v.lang));
   if (en) u.voice = en;
+  // iOS speechSynthesis can interrupt the Web Audio session. Resume the
+  // context after the utterance ends so subsequent clicks still play.
+  u.addEventListener('end', () => {
+    if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+  });
   speechSynthesis.speak(u);
 }
